@@ -16,7 +16,7 @@ if __name__ == "__main__":
     base_model = 'resnet_50_finetune'
     preprocess_resnet = False
     # Optimizer parameters
-    learning_rate = 0.01
+    learning_rate = 0.001
     momentum = 0.9
     # Scheduler parameters
     gamma = 0.9
@@ -107,48 +107,48 @@ if __name__ == "__main__":
 
     timestr = time.strftime("%Y%m%d-%H%M%S")
     model_name = 'medmnist_model_' + timestr + '.onnx'
-    model_trainer.save_model('medmnist_model.onnx', 'onnx')
+    model_trainer.save_model(model_name, 'onnx')
 
     report = f"""\
-    {timestr}
-    # Model parameters
-    num_classes = {num_classes}
-    base_model = '{base_model}'
-    preprocess_resnet = {preprocess_resnet}
+{timestr}
+# Model parameters
+num_classes = {num_classes}
+base_model = '{base_model}'
+preprocess_resnet = {preprocess_resnet}
 
-    # Optimizer parameters
-    learning_rate = {learning_rate}
-    momentum = {momentum}
+# Optimizer parameters
+learning_rate = {learning_rate}
+momentum = {momentum}
 
-    # Scheduler parameters
-    gamma = {gamma}
-    step_size = {step_size}
+# Scheduler parameters
+gamma = {gamma}
+step_size = {step_size}
 
-    # Training parameters
-    num_epochs = {num_epochs}
-    trim_train_dataset = {trim_train_dataset}
-    trim_test_dataset = {trim_test_dataset}
+# Training parameters
+num_epochs = {num_epochs}
+trim_train_dataset = {trim_train_dataset}
+trim_test_dataset = {trim_test_dataset}
 
-    # Regularization parameters
-    ewc_lambda = {ewc_lambda}
-    rehearsal = {rehearsal}
-    dropout = {dropout}
+# Regularization parameters
+ewc_lambda = {ewc_lambda}
+rehearsal = {rehearsal}
+dropout = {dropout}
 
-    # Datasets order
-    dataset_names = {dataset_names}
+# Datasets order
+dataset_names = {dataset_names}
 
-    # Model metrics
-    accuracy = {accuracy}
-    f1_macro = {f1_macro}
-    f1_weighted = {f1_weighted}
-    ari = {ari}
-    nmi = {nmi}
+# Model metrics
+accuracy = {accuracy}
+f1_macro = {f1_macro}
+f1_weighted = {f1_weighted}
+ari = {ari}
+nmi = {nmi}
 
-    # Output model name
-    model_name = '{model_name}'
-    
-    --------------------------------------------------------------------
-    """
+# Output model name
+model_name = '{model_name}'
+
+--------------------------------------------------------------------
+"""
 
     with open('training_report.txt', 'a+') as f:
         f.write(report)

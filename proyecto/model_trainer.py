@@ -91,19 +91,22 @@ class ModelTrainer:
                     running_corrects = 0
 
                     for inputs, targets in dataloader:
+                        inputs = inputs.to(self.device)
 
                         if task_type == 'multi-label, binary-class':
                             labels = targets.to(torch.float32)
+                            labels = labels.to(self.device)
                             criterion = nn.BCEWithLogitsLoss()
                         else:
                             labels = targets.squeeze().long()
+                            labels = labels.to(self.device)
                             criterion = nn.CrossEntropyLoss()
 
                         # zero the parameter gradients
                         self.optimizer.zero_grad()
 
                         with torch.set_grad_enabled(phase == 'train'):
-                            outputs = self.model(inputs.to(self.device))
+                            outputs = self.model(inputs)
                             _, predicted = torch.max(outputs, 1)
                             loss_crit = criterion(outputs, labels)
                             loss_ewc = self.calculate_ewc_loss(ewc_lambda)
@@ -191,7 +194,8 @@ class ModelTrainer:
 
         with torch.no_grad():
             for inputs, labels in tqdm(dataloader):
-
+                inputs = inputs.to(self.device)
+                labels = labels.to(self.device)
                 self.optimizer.zero_grad()
 
                 if task_type == 'multi-label, binary-class':
@@ -208,8 +212,8 @@ class ModelTrainer:
                 # statistics
                 running_loss += loss.item() * labels.size(0)
                 total += labels.size(0)
-                predicted_all.append(predicted)
-                labels_all.append(labels)
+                predicted_all.append(predicted.cpu())
+                labels_all.append(labels.cpu())
                 correct += (predicted == labels).sum().item()
 
         accuracy = correct / total
@@ -248,7 +252,9 @@ class ModelTrainer:
                     labels = labels.squeeze().long()
                     criterion = nn.CrossEntropyLoss()
 
-                outputs = self.model(inputs.to(self.device))
+                inputs = inputs.to(self.device)
+                labels = labels.to(self.device)
+                outputs = self.model(inputs)
                 loss = criterion(outputs, labels)
                 loss.backward()
 
@@ -315,7 +321,23 @@ class ModelTrainer:
     def save_model(self, filename, model_format):
         if model_format == 'onnx':
             self.model.eval()
+            x = torch.randn(1, 3, 28, 28).to(self.device)
+            dynamic_axes_dict = {
+                'input': {
+                    0: 'bs',
+                    2: 'img_x',
+                    3: 'img_y'
+                },
+                'output': {
+                    0: 'bs'
+                }
+            }
+
             torch.onnx.export(
                 self.model,  # model being run
+                x,  # model input
                 filename,
-                export_params=True)
+                input_names=['input'],  # the model's input names
+                output_names=['output'],  # the model's output names
+                export_params=True,
+                dynamic_axes=dynamic_axes_dict)
