@@ -44,11 +44,13 @@ class MedMnistData:
         selected_classes = sorted_classes[:n_classes]
 
         # Create a dataset with only the selected classes
-        self.trim_data(self.train_dataset, flat_class_labels, selected_classes)
+        self.trim_data_by_labels(self.train_dataset, flat_class_labels,
+                                 selected_classes)
         test_labels = self.test_dataset.labels.flatten()
-        self.trim_data(self.test_dataset, test_labels, selected_classes)
+        self.trim_data_by_labels(self.test_dataset, test_labels,
+                                 selected_classes)
 
-    def trim_data(self, dataset, flat_class_labels, selected_labels):
+    def trim_data_by_labels(self, dataset, flat_class_labels, selected_labels):
         dataset.imgs = \
             dataset.imgs[np.isin(flat_class_labels, selected_labels)]
         filtered_labels = dataset.labels[np.isin(flat_class_labels,

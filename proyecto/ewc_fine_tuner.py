@@ -17,8 +17,15 @@ class EWCFineTuner:
         self.momentum = momentum
         self.device = torch.device(
             "cuda" if torch.cuda.is_available() else "cpu")
+        self.params = None
         self.model = self.initialize_model(model_name)
-        self.optimizer = optim.SGD(self.model.parameters(), lr=learning_rate,
+
+        if self.params is not None:
+            opt_params = self.params
+        else:
+            opt_params = self.model.parameters()
+
+        self.optimizer = optim.SGD(opt_params, lr=learning_rate,
                                    momentum=momentum)
         self.fisher_dict = {}
         self.optpar_dict = {}
@@ -26,7 +33,7 @@ class EWCFineTuner:
 
     def initialize_model(self, model_name='resnet50'):
         if model_name == 'resnet50':
-            return self.get_resnet_model()
+            return self.get_resnet_model_finetune()
         elif model_name == 'customNet':
             return Net(3, self.num_classes)
 
@@ -52,21 +59,39 @@ class EWCFineTuner:
                 loss.backward()
                 self.optimizer.step()
 
+        # Update regularization params
         task_id = dataloader.dataset.flag
         self.optpar_dict[task_id] = {}
         self.fisher_dict[task_id] = {}
         self.trained_tasks.append(task_id)
 
-        # Update regularization params
+        # self.optimizer.zero_grad()
+        #
+        # for inputs, targets in tqdm(dataloader):
+        #     if task_type == 'multi-label, binary-class':
+        #         targets = targets.to(torch.float32)
+        #         criterion = nn.BCEWithLogitsLoss()
+        #     else:
+        #         targets = targets.squeeze().long()
+        #         criterion = nn.CrossEntropyLoss()
+        #
+        #     outputs = self.model(inputs.to(self.device))
+        #     loss = criterion(outputs, targets.to(self.device))
+        #     loss.backward()
+        #     self.optimizer.step()
+
         for name, param in self.model.named_parameters():
-            self.optpar_dict[task_id][name] = param.data.clone()
-            self.fisher_dict[task_id][name] = param.grad.data.clone().pow(2)
+            if param.grad is not None:
+                self.optpar_dict[task_id][name] = param.data.clone()
+                self.fisher_dict[task_id][name] = param.grad.data.clone().pow(2)
 
     def calculate_ewc_loss(self, ewc_lambda):
         ewc_loss = 0
 
         for id in self.trained_tasks:
             for name, param in self.model.named_parameters():
+                if not name in self.fisher_dict[id]:
+                    continue
                 fisher = self.fisher_dict[id][name]
                 optpar = self.optpar_dict[id][name]
                 ewc_loss += \
@@ -87,7 +112,7 @@ class EWCFineTuner:
             print(f'\n[{i}] train on {dataset.data_flag}')
 
             # If rehearsal>0, carry over part of the previous dataset
-            if rehearsal>0 and last_dataset is not None:
+            if rehearsal > 0 and last_dataset is not None:
                 self.add_data_from_previous_task(
                     dataset, last_dataset, rehearsal)
 
@@ -150,7 +175,8 @@ class EWCFineTuner:
         ari = adjusted_rand_score(labels, predicted_all)
         nmi = normalized_mutual_info_score(labels, predicted_all)
 
-        print(f"Accuracy on {dataloader.dataset.flag}: {correct}/{total} = {accuracy}")
+        print(
+            f"Accuracy on {dataloader.dataset.flag}: {correct}/{total} = {accuracy}")
         print(f"ARI on {dataloader.dataset.flag}: {ari}")
         print(f"NMI on {dataloader.dataset.flag}: {nmi}")
         return accuracy
@@ -176,6 +202,18 @@ class EWCFineTuner:
 
         # Combine the pretrained ResNet-50 base with the custom classifier
         model = nn.Sequential(model, custom_classifier)
+        model.to(self.device)
+        return model
+
+    def get_resnet_model_finetune(self):
+        model = models.resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
+
+        for param in model.parameters():
+            param.requires_grad = False
+
+        num_features = model.fc.in_features
+        model.fc = nn.Linear(num_features, self.num_classes)
+        self.params = model.fc.parameters()
         model.to(self.device)
         return model
 
