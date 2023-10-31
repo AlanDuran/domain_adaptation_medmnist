@@ -65,6 +65,14 @@ if __name__ == "__main__":
 
         datasets.append(dataset)
 
+    datasets = sorted(datasets, key=lambda dataset: len(
+        dataset.test_dataset.imgs), reverse=True)
+    random_index = random.randint(0, len(datasets) - 1)
+    # Pop the dataset at the random index
+    random_dataset = datasets.pop(random_index)
+    # Append the random dataset to the end of the list
+    datasets.append(random_dataset)
+
     for dataset in datasets:
         if trim_train_dataset:
             imgs = dataset.train_dataset.imgs

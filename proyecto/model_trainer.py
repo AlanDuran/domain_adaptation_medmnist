@@ -173,9 +173,9 @@ class ModelTrainer:
                              ewc_lambda)
 
             if ewc_lambda > 0:
-                ewc_dataloader = DataLoader(original_dataset, batch_size=32,
-                                            shuffle=True, drop_last=True)
-                self.on_task_update(ewc_dataloader)
+                # ewc_dataloader = DataLoader(train_dataset, batch_size=32,
+                #                             shuffle=True, drop_last=True)
+                self.on_task_update(test_dataloader)
 
             self.evaluate_model(test_dataloader)
             accuracy, f1_macro, f1_weighted, ari, nmi = \
@@ -300,7 +300,8 @@ class ModelTrainer:
                 curr_subset = n_subset
 
             # Randomly sample a subset of the data
-            random_idx = np.random.choice(n_samples, curr_subset, replace=False)
+            random_idx = np.random.choice(n_samples_prev, curr_subset,
+                                          replace=False)
             print(f"imgs before {imgs.shape}, labels before {labels.shape}")
 
             # Concatenate the subset to your dataset
